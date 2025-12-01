@@ -49,7 +49,7 @@ services:
     labels:
       - "traefik.enable=true"
       # Router for API (HTTPS)
-      - "traefik.http.routers.server.rule=Host(`vidatodarevisao.com.br`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.server.rule=(Host(`vidatodarevisao.com.br`) || Host(`www.vidatodarevisao.com.br`)) && PathPrefix(`/api`)"
       - "traefik.http.routers.server.entrypoints=websecure"
       - "traefik.http.routers.server.tls.certresolver=myresolver"
       - "traefik.http.services.server.loadbalancer.server.port=3333"
@@ -62,7 +62,7 @@ services:
     labels:
       - "traefik.enable=true"
       # Router for Client (HTTPS)
-      - "traefik.http.routers.client.rule=Host(`vidatodarevisao.com.br`)"
+      - "traefik.http.routers.client.rule=Host(`vidatodarevisao.com.br`) || Host(`www.vidatodarevisao.com.br`)"
       - "traefik.http.routers.client.entrypoints=websecure"
       - "traefik.http.routers.client.tls.certresolver=myresolver"
       - "traefik.http.services.client.loadbalancer.server.port=80"
