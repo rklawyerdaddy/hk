@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   traefik:
     image: "traefik:v2.10"
@@ -20,9 +18,9 @@ services:
     image: postgres:15-alpine
     container_name: hk_db
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=hk_user
+      - POSTGRES_PASSWORD=secure_password_123
+      - POSTGRES_DB=hk_db
     volumes:
       - db_data:/var/lib/postgresql/data
     restart: always
@@ -30,8 +28,8 @@ services:
   server:
     build: ./server
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public
-      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=postgresql://hk_user:secure_password_123@db:5432/hk_db?schema=public
+      - JWT_SECRET=super_secret_jwt_key_change_me
       - PORT=3333
     depends_on:
       - db
