@@ -59,6 +59,8 @@ services:
       # Router for API (HTTPS)
       - "traefik.http.routers.server.rule=(Host(`vidatodarevisao.com.br`) || Host(`www.vidatodarevisao.com.br`)) && PathPrefix(`/api`)"
       - "traefik.http.routers.server.entrypoints=websecure"
+      - "traefik.http.routers.server.middlewares=api-strip"
+      - "traefik.http.middlewares.api-strip.stripprefix.prefixes=/api"
       - "traefik.http.routers.server.tls.certresolver=myresolver"
       - "traefik.http.services.server.loadbalancer.server.port=3333"
     restart: always
