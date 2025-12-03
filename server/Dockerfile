@@ -1,7 +1,7 @@
-FROM node:18-slim
+FROM node:18-alpine
 
-# Install OpenSSL (required for Prisma)
-RUN apt-get update -y && apt-get install -y openssl
+# Instalar dependências do sistema necessárias para o Prisma (OpenSSL)
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 
@@ -12,6 +12,7 @@ RUN npm install
 
 COPY . .
 
+# Gerar o cliente Prisma
 RUN npx prisma generate
 
 EXPOSE 3333
