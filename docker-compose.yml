@@ -29,9 +29,9 @@ services:
     image: postgres:15-alpine
     container_name: hk_db
     environment:
-      - POSTGRES_USER=raulkiyoshi
-      - "POSTGRES_PASSWORD=Ghb260829cb132!"
-      - POSTGRES_DB=raulkiyoshi
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
       - db_data:/var/lib/postgresql/data
     networks:
@@ -41,8 +41,8 @@ services:
   server:
     build: ./server
     environment:
-      - "DATABASE_URL=postgresql://raulkiyoshi:Ghb260829cb132!@db:5432/raulkiyoshi?schema=public"
-      - "JWT_SECRET=Theojunji1!"
+      - "DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public"
+      - "JWT_SECRET=${JWT_SECRET}"
       - PORT=3333
     depends_on:
       - db

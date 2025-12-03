@@ -67,13 +67,15 @@ nano .env
 Add your production variables. **You define the database credentials here:**
 
 ```env
-# Database Credentials (YOU CHOOSE THESE)
-DB_USER=hk_user
-DB_PASSWORD=secure_password_123
-DB_NAME=hk_db
+# Database Credentials
+# IMPORTANTE: Se você já rodou o projeto antes, use as MESMAS credenciais que usou antes,
+# ou apague o volume do banco de dados com 'docker compose down -v' para recriar.
+DB_USER=raulkiyoshi
+DB_PASSWORD=Ghb260829cb132!
+DB_NAME=raulkiyoshi
 
 # Security
-JWT_SECRET=another_super_secure_secret
+JWT_SECRET=Theojunji1!
 ```
 
 The `docker-compose.yml` will automatically use these to set up the database and connect the server to it.
