@@ -1,36 +1,54 @@
-# Push to GitHub Instructions
+# Instruções de Git e Deploy
 
-It seems **Git is not installed** or not configured in your system's PATH. I couldn't push the code for you.
+## 1. No seu Computador (Local)
 
-## Step 1: Install Git
+Para enviar as alterações que fizemos (novo domínio, SSL, senha) para o GitHub:
 
-1.  Download Git for Windows: [https://git-scm.com/download/win](https://git-scm.com/download/win)
-2.  Install it (you can use the default settings).
-3.  **Important**: Restart your terminal (or VS Code) after installation.
-
-## Step 2: Push the Code
-
-Open a new terminal in your project folder (`c:\Users\Raul\Desktop\HK`) and run the following commands one by one:
+Abra o terminal na pasta do projeto (`c:\Users\Raul\Desktop\HK`) e execute:
 
 ```bash
-# Initialize Git
-git init
-
-# Add all files
+# 1. Adicionar todas as alterações
 git add .
 
-# Commit changes
-git commit -m "Initial commit with Docker and Traefik"
+# 2. Salvar as alterações (Commit)
+git commit -m "Atualizando dominio, SSL e senha admin"
 
-# Rename branch to main
-git branch -M main
-
-# Add your repository
-git remote add origin https://github.com/rklawyerdaddy/hk.git
-
-# Push to GitHub
-git push -u origin main
+# 3. Enviar para o GitHub
+git push
 ```
 
-> [!NOTE]
-> If `git remote add origin` fails saying it already exists, you can skip it or run `git remote set-url origin https://github.com/rklawyerdaddy/hk.git` to update it.
+---
+
+## 2. Na sua VPS (Servidor)
+
+Para baixar as alterações e aplicar no servidor:
+
+1.  **Conecte-se à VPS**:
+    ```bash
+    ssh root@SEU_IP_DA_VPS
+    ```
+
+2.  **Entre na pasta do projeto**:
+    ```bash
+    cd HK
+    ```
+
+3.  **Baixe as atualizações**:
+    ```bash
+    git pull
+    ```
+
+4.  **Configure o SSL (Apenas desta vez)**:
+    Como criamos um script novo para o SSL, precisamos dar permissão e rodar ele:
+    ```bash
+    chmod +x init-letsencrypt.sh
+    ./init-letsencrypt.sh
+    ```
+    *(Responda 'y' se ele perguntar algo)*
+
+5.  **Reinicie o sistema**:
+    Para garantir que a nova senha e configurações sejam aplicadas:
+    ```bash
+    docker compose down
+    docker compose up -d --build
+    ```
