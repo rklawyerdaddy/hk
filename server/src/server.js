@@ -106,9 +106,22 @@ app.post('/clients', async (req, res) => {
 app.put('/clients/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const { name, whatsapp, cpf, rg, address, motherName, pix, bank, observation, rating } = req.body;
+
         const client = await prisma.client.update({
             where: { id },
-            data: req.body
+            data: {
+                name,
+                whatsapp: whatsapp || null,
+                cpf: cpf || null,
+                rg: rg || null,
+                address: address || null,
+                motherName: motherName || null,
+                pix: pix || null,
+                bank: bank || null,
+                observation: observation || null,
+                rating: rating
+            }
         });
         res.json(client);
     } catch (error) {
