@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { Lock, User, ArrowRight } from 'lucide-react';
 
@@ -75,6 +75,15 @@ const Login = () => {
                         <ArrowRight size={20} />
                     </button>
                 </form>
+
+                <div className="mt-6 text-center">
+                    <p className="text-blue-200 text-sm">
+                        Não tem uma conta?{' '}
+                        <Link to="/register" className="text-white font-bold hover:underline">
+                            Criar Conta
+                        </Link>
+                    </p>
+                </div>
             </div>
         </div>
     );

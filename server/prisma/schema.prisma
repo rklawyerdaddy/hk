@@ -7,11 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String        @id @default(uuid())
+  username     String        @unique
+  password     String
+  name         String?
+  clients      Client[]
+  transactions Transaction[]
+  partners     Partner[]
+  createdAt    DateTime      @default(now())
+}
+
 model Client {
   id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
   name        String
   whatsapp    String?
-  cpf         String?  @unique
+  cpf         String?
   rg          String?
   address     String?
   motherName  String?
@@ -22,30 +35,49 @@ model Client {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   loans       Loan[]
+
+  @@unique([userId, cpf]) // CPF único apenas dentro da conta do mesmo usuário
+}
+
+model Partner {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  name           String
+  pixKey         String?
+  commissionRate Decimal  @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  loans          Loan[]
 }
 
 model Loan {
-  id           String        @id @default(uuid())
-  clientId     String
-  client       Client        @relation(fields: [clientId], references: [id])
-  amount       Decimal
-  interestRate Decimal
-  totalAmount  Decimal
-  startDate    DateTime
-  status       String        @default("ACTIVE") // ACTIVE, PAID, DEFAULTED
-  installments Installment[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id             String        @id @default(uuid())
+  clientId       String
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  partnerId      String?
+  partner        Partner?      @relation(fields: [partnerId], references: [id])
+  amount         Decimal
+  interestRate   Decimal
+  totalAmount    Decimal
+  startDate      DateTime
+  status         String        @default("ACTIVE") // ACTIVE, PAID, DEFAULTED, RENEGOTIATED
+  originalLoanId String?       // Para renegociação
+  originalLoan   Loan?         @relation("Renegotiation", fields: [originalLoanId], references: [id])
+  renegotiatedTo Loan[]        @relation("Renegotiation")
+  installments   Installment[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
 model Installment {
   id         String    @id @default(uuid())
   loanId     String
-  loan       Loan      @relation(fields: [loanId], references: [id])
+  loan       Loan      @relation(fields: [loanId], references: [id], onDelete: Cascade)
   number     Int
   dueDate    DateTime
   amount     Decimal
-  status     String    @default("PENDING") // PENDING, PAID, PARTIAL, LATE
+  status     String    @default("PENDING")
   paidAmount Decimal   @default(0)
   paidDate   DateTime?
   createdAt  DateTime  @default(now())
@@ -54,17 +86,12 @@ model Installment {
 
 model Transaction {
   id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
   type        String   // IN, OUT
   description String
   amount      Decimal
   date        DateTime @default(now())
   category    String?
   createdAt   DateTime @default(now())
-}
-
-model User {
-  id       String  @id @default(uuid())
-  username String  @unique
-  password String
-  name     String?
 }
