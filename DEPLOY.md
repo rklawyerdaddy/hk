@@ -1,10 +1,10 @@
 # Deployment Instructions for Contabo VPS
 
-This guide explains how to deploy your application to your Contabo VPS using Docker, Traefik, and a local PostgreSQL database.
+This guide explains how to deploy your application to your Contabo VPS using Docker, Nginx, and a local PostgreSQL database.
 
 ## Prerequisites
 
-1.  **Access to your VPS**: You should have the IP address and root password (or SSH key).
+1.  **Access to your VPS**: You should have the IP address (`209.145.56.53`) and root password (or SSH key).
 2.  **Docker & Docker Compose**: Installed on your VPS.
 
 ## Step 1: Install Docker on VPS (if not installed)
@@ -91,9 +91,11 @@ docker compose up -d --build
 - `-d`: Detached mode (runs in background).
 - `--build`: Rebuilds images to ensure latest code is used.
 
+The system now includes healthchecks, so the server will wait for the database to be fully ready before starting.
+
 ## Step 5: Initialize Database
 
-Since this is a new database, you need to push the schema:
+Since this is a new database (or if you have schema changes), you need to push the schema:
 
 ```bash
 # Run prisma db push inside the server container
@@ -103,10 +105,16 @@ docker compose exec server npx prisma db push
 ## Step 6: Verify
 
 - **App**: Visit `http://hkemprestimos.site` (ou `http://209.145.56.53`)
-- **Traefik Dashboard**: Visit `http://209.145.56.53:8080`
 
 ## Troubleshooting
 
 - **View Logs**: `docker compose logs -f`
 - **Restart**: `docker compose restart`
 - **Stop**: `docker compose down`
+- **Rebuild**: `docker compose up -d --build`
+
+## SSL Configuration (Future Step)
+
+Currently, SSL is disabled. To enable it later:
+1. Uncomment the SSL section in `nginx/default.conf`.
+2. Run Certbot to generate certificates.

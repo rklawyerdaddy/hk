@@ -35,6 +35,11 @@ services:
       - POSTGRES_DB=${DB_NAME}
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - web_network
     restart: always
@@ -46,7 +51,8 @@ services:
       - "JWT_SECRET=${JWT_SECRET}"
       - PORT=3333
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - web_network
     restart: always
