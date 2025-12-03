@@ -11,7 +11,7 @@ This guide explains how to deploy your application to your Contabo VPS using Doc
 
 Connect to your VPS via SSH:
 ```bash
-ssh root@YOUR_VPS_IP
+ssh root@209.145.56.53
 ```
 
 Run the following commands to install Docker:
@@ -53,7 +53,7 @@ You need to transfer your project files to the VPS. You can use `scp` (secure co
 ### Option B: Using SCP
 From your local machine:
 ```bash
-scp -r c:/Users/Raul/Desktop/HK root@YOUR_VPS_IP:/root/
+scp -r c:/Users/Raul/Desktop/HK root@209.145.56.53:/root/
 ```
 
 ## Step 3: Configure Environment Variables
@@ -100,8 +100,8 @@ docker compose exec server npx prisma db push
 
 ## Step 6: Verify
 
-- **App**: Visit `http://YOUR_VPS_IP`
-- **Traefik Dashboard**: Visit `http://YOUR_VPS_IP:8080`
+- **App**: Visit `http://hkemprestimos.site` (ou `http://209.145.56.53`)
+- **Traefik Dashboard**: Visit `http://209.145.56.53:8080`
 
 ## Troubleshooting
 
