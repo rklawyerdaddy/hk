@@ -80,6 +80,7 @@ const Layout = ({ children }) => {
                     <SidebarItem to="/clients" icon={Users} label="Clientes" />
                     <SidebarItem to="/loans" icon={Banknote} label="Empréstimos" />
                     <SidebarItem to="/transactions" icon={ArrowRightLeft} label="Fluxo de Caixa" />
+                    <SidebarItem to="/partners" icon={Users} label="Parceiros" />
                 </nav>
 
                 <div className="p-4 border-t border-white/10">

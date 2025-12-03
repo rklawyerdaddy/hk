@@ -201,9 +201,54 @@ app.get('/clients/:id/stats', authenticateToken, async (req, res) => {
 
 // --- ROTAS DE EMPRÉSTIMOS ---
 
+// --- ROTAS DE PARCEIROS ---
+
+app.get('/partners', authenticateToken, async (req, res) => {
+    try {
+        const partners = await prisma.partner.findMany({
+            where: { userId: req.user.id },
+            orderBy: { name: 'asc' }
+        });
+        res.json(partners);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao buscar parceiros' });
+    }
+});
+
+app.post('/partners', authenticateToken, async (req, res) => {
+    const { name, pixKey, commissionRate } = req.body;
+    try {
+        const partner = await prisma.partner.create({
+            data: {
+                userId: req.user.id,
+                name,
+                pixKey,
+                commissionRate: commissionRate || 0
+            }
+        });
+        res.json(partner);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao criar parceiro' });
+    }
+});
+
+app.delete('/partners/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const partner = await prisma.partner.findFirst({ where: { id, userId: req.user.id } });
+        if (!partner) return res.status(404).json({ error: 'Parceiro não encontrado' });
+
+        await prisma.partner.delete({ where: { id } });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao excluir parceiro' });
+    }
+});
+
+// --- ROTAS DE EMPRÉSTIMOS ---
+
 app.get('/loans', authenticateToken, async (req, res) => {
     try {
-        // Busca empréstimos apenas dos clientes do usuário
         const loans = await prisma.loan.findMany({
             where: {
                 client: {
@@ -212,10 +257,12 @@ app.get('/loans', authenticateToken, async (req, res) => {
             },
             include: {
                 client: true,
+                partner: true,
                 installments: {
                     orderBy: { dueDate: 'asc' }
                 }
-            }
+            },
+            orderBy: { createdAt: 'desc' }
         });
         res.json(loans);
     } catch (error) {
@@ -224,10 +271,9 @@ app.get('/loans', authenticateToken, async (req, res) => {
 });
 
 app.post('/loans', authenticateToken, async (req, res) => {
-    const { clientId, amount, totalAmount, installmentsCount, startDate } = req.body;
+    const { clientId, partnerId, amount, totalAmount, installmentsCount, startDate } = req.body;
 
     try {
-        // Verifica se o cliente pertence ao usuário
         const client = await prisma.client.findFirst({ where: { id: clientId, userId: req.user.id } });
         if (!client) return res.status(403).json({ error: 'Cliente inválido' });
 
@@ -237,41 +283,174 @@ app.post('/loans', authenticateToken, async (req, res) => {
         const interestRate = principal > 0 ? (totalInterest / principal) * 100 : 0;
         const installmentValue = total / installmentsCount;
 
-        const loan = await prisma.loan.create({
-            data: {
-                clientId,
-                amount: principal,
-                interestRate: interestRate,
-                totalAmount: total,
-                startDate: new Date(startDate),
-                installments: {
-                    create: Array.from({ length: installmentsCount }).map((_, index) => ({
-                        number: index + 1,
-                        amount: installmentValue,
-                        dueDate: addMonths(new Date(startDate), index + 1),
-                        status: 'PENDING'
-                    }))
+        const result = await prisma.$transaction(async (tx) => {
+            const loan = await tx.loan.create({
+                data: {
+                    clientId,
+                    partnerId: partnerId || null,
+                    amount: principal,
+                    interestRate: interestRate,
+                    totalAmount: total,
+                    startDate: new Date(startDate),
+                    installments: {
+                        create: Array.from({ length: installmentsCount }).map((_, index) => ({
+                            number: index + 1,
+                            amount: installmentValue,
+                            dueDate: addMonths(new Date(startDate), index + 1),
+                            status: 'PENDING'
+                        }))
+                    }
+                },
+                include: { installments: true }
+            });
+
+            // Registrar Saída do Empréstimo
+            await tx.transaction.create({
+                data: {
+                    userId: req.user.id,
+                    type: 'OUT',
+                    description: `Empréstimo para ${client.name}`,
+                    amount: principal,
+                    category: 'Empréstimo',
+                    date: new Date()
                 }
-            },
-            include: { installments: true }
-        });
+            });
 
-        // Registrar Saída no Fluxo de Caixa
-        await prisma.transaction.create({
-            data: {
-                userId: req.user.id,
-                type: 'OUT',
-                description: `Empréstimo para Cliente: ${client.name}`,
-                amount: principal,
-                category: 'Empréstimo',
-                date: new Date()
+            // Se tiver parceiro, registrar comissão (se houver regra de comissão imediata, 
+            // aqui assumimos que o usuário registra a saída da comissão manualmente ou podemos automatizar.
+            // Vamos automatizar se o parceiro tiver taxa definida).
+            if (partnerId) {
+                const partner = await tx.partner.findUnique({ where: { id: partnerId } });
+                if (partner && Number(partner.commissionRate) > 0) {
+                    // Comissão baseada no lucro (juros) ou no total? Geralmente lucro.
+                    // Vou assumir uma regra simples: % sobre o lucro (total - principal).
+                    const profit = total - principal;
+                    const commission = profit * (Number(partner.commissionRate) / 100);
+
+                    if (commission > 0) {
+                        await tx.transaction.create({
+                            data: {
+                                userId: req.user.id,
+                                type: 'OUT',
+                                description: `Comissão ${partner.name} - ${client.name}`,
+                                amount: commission,
+                                category: 'Comissão',
+                                date: new Date()
+                            }
+                        });
+                    }
+                }
             }
+
+            return loan;
         });
 
-        res.json(loan);
+        res.json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Erro ao criar empréstimo' });
+    }
+});
+
+app.post('/loans/:id/renegotiate', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { newTotalAmount, newInstallmentsCount, newStartDate, paidAmountEntry } = req.body;
+
+    try {
+        const oldLoan = await prisma.loan.findUnique({
+            where: { id },
+            include: { client: true, installments: true }
+        });
+
+        if (!oldLoan) return res.status(404).json({ error: 'Empréstimo não encontrado' });
+        if (oldLoan.client.userId !== req.user.id) return res.status(403).json({ error: 'Acesso negado' });
+
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Marcar empréstimo antigo como RENEGOTIATED
+            await tx.loan.update({
+                where: { id },
+                data: { status: 'RENEGOTIATED' }
+            });
+
+            // 2. Marcar parcelas pendentes como CANCELLED (ou similar, aqui vamos deixar como estão ou deletar? 
+            // Melhor manter histórico, mas com status alterado para não somar dívida).
+            // Vamos assumir que o status RENEGOTIATED no Loan já invalida a soma das parcelas nos dashboards.
+
+            // 3. Criar novo empréstimo
+            // O "Principal" do novo empréstimo é o saldo devedor do antigo? 
+            // Simplificação: O usuário define o "Novo Total a Pagar". O "Principal" é considerado o saldo devedor anterior.
+
+            // Calcular saldo devedor do antigo (Soma das parcelas pendentes)
+            const debt = oldLoan.installments
+                .filter(i => i.status === 'PENDING')
+                .reduce((acc, curr) => acc + Number(curr.amount), 0);
+
+            // Se houve uma "Entrada" na renegociação (ex: cliente pagou 100 reais para renegociar)
+            const entry = paidAmountEntry ? parseFloat(paidAmountEntry) : 0;
+            const newPrincipal = debt - entry;
+
+            const newInstallmentValue = parseFloat(newTotalAmount) / parseInt(newInstallmentsCount);
+
+            const newLoan = await tx.loan.create({
+                data: {
+                    clientId: oldLoan.clientId,
+                    originalLoanId: oldLoan.id,
+                    amount: newPrincipal, // O valor "refinanciado"
+                    totalAmount: parseFloat(newTotalAmount),
+                    interestRate: 0, // Recalcular se necessário
+                    startDate: new Date(newStartDate),
+                    status: 'ACTIVE',
+                    installments: {
+                        create: Array.from({ length: parseInt(newInstallmentsCount) }).map((_, index) => ({
+                            number: index + 1,
+                            amount: newInstallmentValue,
+                            dueDate: addMonths(new Date(newStartDate), index + 1),
+                            status: 'PENDING'
+                        }))
+                    }
+                }
+            });
+
+            // 4. Registrar Entrada no Caixa (se houve pagamento na renegociação)
+            if (entry > 0) {
+                await tx.transaction.create({
+                    data: {
+                        userId: req.user.id,
+                        type: 'IN',
+                        description: `Entrada Renegociação - ${oldLoan.client.name}`,
+                        amount: entry,
+                        category: 'Renegociação',
+                        date: new Date()
+                    }
+                });
+            }
+
+            return newLoan;
+        });
+
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao renegociar empréstimo' });
+    }
+});
+
+app.delete('/loans/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const loan = await prisma.loan.findUnique({
+            where: { id },
+            include: { client: true }
+        });
+
+        if (!loan) return res.status(404).json({ error: 'Empréstimo não encontrado' });
+        if (loan.client.userId !== req.user.id) return res.status(403).json({ error: 'Acesso negado' });
+
+        // Delete cascade já configurado no schema para installments, mas precisamos garantir
+        await prisma.loan.delete({ where: { id } });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao excluir empréstimo' });
     }
 });
 

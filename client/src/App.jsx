@@ -3,6 +3,7 @@ import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import Loans from './pages/Loans';
 import Transactions from './pages/Transactions';
+import Partners from './pages/Partners';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -22,6 +23,7 @@ function App() {
                 <Route path="/clients" element={<PrivateRoute><Clients /></PrivateRoute>} />
                 <Route path="/loans" element={<PrivateRoute><Loans /></PrivateRoute>} />
                 <Route path="/transactions" element={<PrivateRoute><Transactions /></PrivateRoute>} />
+                <Route path="/partners" element={<PrivateRoute><Partners /></PrivateRoute>} />
             </Routes>
         </BrowserRouter>
     );
